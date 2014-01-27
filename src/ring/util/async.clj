@@ -1,9 +1,36 @@
 (ns ring.util.async
   (:require [clojure.core.async :refer [go <! map<]]
             [clojure.core.async.impl.protocols :refer [Channel]]
+            [clojure.java.io :as io]
             [cheshire.core :as json])
   (:import (javax.servlet.http HttpServletRequest HttpServletResponse)
-           (java.io PrintWriter)))
+           (java.io PrintWriter InputStream File FileInputStream)))
+
+(defn- set-body
+  "Update a HttpServletResponse body with a String, ISeq, File or InputStream.
+  It's copied from ring-servlet."
+  [^HttpServletResponse response, body]
+  (cond
+   (string? body)
+   (with-open [writer (.getWriter response)]
+     (.print writer body))
+   (seq? body)
+   (with-open [writer (.getWriter response)]
+     (doseq [chunk body]
+       (.print writer (str chunk))
+       (.flush writer)))
+   (instance? InputStream body)
+   (with-open [^InputStream b body]
+     (io/copy b (.getOutputStream response)))
+   (instance? File body)
+   (let [^File f body]
+     (with-open [stream (FileInputStream. f)]
+       (set-body response stream)))
+   (nil? body)
+   nil
+   :else
+   (throw (Exception. ^String (format "Unrecognized body: %s" body)))))
+
 
 (defn handle-async-body [response ^HttpServletRequest servlet-request options]
   (if (satisfies? Channel (:body response))
@@ -18,13 +45,9 @@
       (when listener
         (.addListener async listener))
       (.setContentType servlet-response content-type)
-      (let [^PrintWriter out (.getWriter servlet-response)]
-        (go (loop []
-              (when-let [data (<! chan)]
-                (.write out data)
-                (.flush out)
-                (recur)))
-            (.complete async)))
+      (go (when-let [data (<! chan)]
+            (set-body response data))
+          (.complete async))
       (dissoc response :body))
     response))
 
