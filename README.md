@@ -38,14 +38,13 @@ add data to the body asynchronously.
 You can configure the AsyncContext's timeout and AsyncListener:
 
 ```clj
-(def listener
-	(reify AsyncListener
-		(onComplete [this e])
-		(onTimeout [this e])
-		(onError [this e])
-		(onStartAsync [this e])))
+(def timeout-listener (reify
+                        org.eclipse.jetty.continuation.ContinuationListener
+                        (onComplete [this c])
+                        (onTimeout [this c]
+                          (.complete c))))
 (defn start []
-  (run-jetty-async handler {:join? false :port 8000 :async-timeout 5000 :async-listener listener}))
+  (run-jetty-async handler {:join? false :port 8000 :async-timeout 5000 :async-listener timeout-listener}))
 ```
 
 ## License

@@ -2,6 +2,7 @@
   (:require [clojure.core.async :refer [go <! map<]]
             [clojure.core.async.impl.protocols :refer [Channel]]
             [clojure.java.io :as io]
+            [ring.util.servlet :as servlet]
             [cheshire.core :as json])
   (:import (javax.servlet.http HttpServletRequest HttpServletResponse)
            (java.io PrintWriter InputStream File FileInputStream)))
@@ -31,24 +32,24 @@
    :else
    (throw (Exception. ^String (format "Unrecognized body: %s" body)))))
 
-
 (defn handle-async-body [response ^HttpServletRequest servlet-request options]
   (if (satisfies? Channel (:body response))
     (let [chan (:body response)
           timeout (:async-timeout options)
           listener (:async-listener options)
-          async (.startAsync servlet-request)
-          ^HttpServletResponse servlet-response (.getResponse async)
-          content-type (get-in response [:headers "Content-Type"])]
+          ^org.eclipse.jetty.server.AsyncContinuation async (.startAsync servlet-request)
+          ^HttpServletResponse servlet-response (.getResponse async)]
       (when timeout
-        (.setTimeout async))
+        (.setTimeout async timeout))
       (when listener
-        (.addListener async listener))
-      (.setContentType servlet-response content-type)
-      (go (when-let [data (<! chan)]
-            (set-body servlet-response data))
-          (.complete async))
-      (dissoc response :body))
+        (.addContinuationListener async listener))
+      (servlet/set-headers servlet-response (:headers response))
+      (go
+       (when-not (.isComplete async)
+         (when-let [data (<! chan)]
+           (set-body servlet-response data))
+         (.complete async)))
+      (dissoc response :body :headers))
     response))
 
 (defn add-sse-headers [request]
