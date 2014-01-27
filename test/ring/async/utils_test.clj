@@ -12,25 +12,17 @@
 (deftest test-edn-events
   (let [body (chan)
         events (edn-events body)]
-    (go (dotimes [i 5]
-          (>! body {:foo i}))
-        (close! body))
-    (is (= ["data: {:foo 0}"
-            "data: {:foo 1}"
-            "data: {:foo 2}"
-            "data: {:foo 3}"
-            "data: {:foo 4}"]
+    (go
+     (>! body {:foo 0})
+     (close! body))
+    (is (= ["data: {:foo 0}"]
            (slurp-events events)))))
 
 (deftest test-json-events
   (let [body (chan)
         events (json-events body)]
-    (go (dotimes [i 5]
-          (>! body {:foo i}))
-        (close! body))
-    (is (= ["data: {\"foo\":0}"
-            "data: {\"foo\":1}"
-            "data: {\"foo\":2}"
-            "data: {\"foo\":3}"
-            "data: {\"foo\":4}"]
+    (go
+     (>! body {:foo 0})
+     (close! body))
+    (is (= ["data: {\"foo\":0}"]
            (slurp-events events)))))

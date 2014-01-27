@@ -46,7 +46,7 @@
         (.addListener async listener))
       (.setContentType servlet-response content-type)
       (go (when-let [data (<! chan)]
-            (set-body response data))
+            (set-body servlet-response data))
           (.complete async))
       (dissoc response :body))
     response))

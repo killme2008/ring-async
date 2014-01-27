@@ -6,10 +6,9 @@
 
 (defn test-handler [request]
   (let [body (chan)]
-    (go (dotimes [i 5]
-          (<! (timeout 100))
-          (>! body (str i "\n")))
-        (close! body))
+    (go  (<! (timeout 100))
+         (>! body (str 0 "\n"))
+         (close! body))
     {:body body}))
 
 (defn get-async []
@@ -22,5 +21,5 @@
   (let [jetty (run-jetty-async test-handler {:join? false :port 7700})]
     (doseq [result (doall
                     (repeatedly 5000 get-async))]
-      (is (= "0\n1\n2\n3\n4\n" @result)))
+      (is (= "0\n" @result)))
     (.stop jetty)))
