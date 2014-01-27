@@ -5,12 +5,18 @@
   (:import (javax.servlet.http HttpServletRequest HttpServletResponse)
            (java.io PrintWriter)))
 
-(defn handle-async-body [response ^HttpServletRequest servlet-request]
+(defn handle-async-body [response ^HttpServletRequest servlet-request options]
   (if (satisfies? Channel (:body response))
     (let [chan (:body response)
+          timeout (:async-timeout options)
+          listener (:async-listener options)
           async (.startAsync servlet-request)
           ^HttpServletResponse servlet-response (.getResponse async)
           content-type (get-in response [:headers "Content-Type"])]
+      (when timeout
+        (.setTimeout async))
+      (when listener
+        (.addListener async listener))
       (.setContentType servlet-response content-type)
       (let [^PrintWriter out (.getWriter servlet-response)]
         (go (loop []

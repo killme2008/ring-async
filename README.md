@@ -33,6 +33,21 @@ add data to the body asynchronously.
   (run-jetty-async handler {:join? false :port 8000}))
 ```
 
+### AsyncContext options
+
+You can configure the AsyncContext's timeout and AsyncListener:
+
+```clj
+(def listener
+	(reify AsyncListener
+		(onComplete [this e])
+		(onTimeout [this e])
+		(onError [this e])
+		(onStartAsync [this e])))
+(defn start []
+  (run-jetty-async handler {:join? false :port 8000 :async-timeout 5000 :async-listener listener}))
+```
+
 ## License
 
 Copyright © 2013 Justin Balthrop
